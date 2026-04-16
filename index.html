@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>IoT Gas Detector | MQTT Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-mode">
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1>
+                    <i class="fas fa-microchip"></i>
+                    <span>GAS DETECTOR</span>
+                    <span class="iot-badge">IoT</span>
+                </h1>
+                <p><i class="fas fa-waveform"></i> Suhu · Kelembapan · Gas (real-time via MQTT)</p>
+            </div>
+            <div class="header-controls">
+                <div class="mqtt-status" id="mqttStatus">
+                    <i class="fas fa-plug"></i>
+                    <span id="mqttStatusText">Terputus</span>
+                    <span class="status-dot" id="mqttStatusDot"></span>
+                </div>
+                <button class="theme-toggle" id="themeToggle" title="Ganti Mode">
+                    <div class="theme-toggle-inner">
+                        <span class="theme-icon sun-icon"><i class="fas fa-sun"></i></span>
+                        <span class="theme-icon moon-icon"><i class="fas fa-moon"></i></span>
+                        <div class="theme-toggle-slider"></div>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- 3 CARD -->
+        <div class="cards-grid">
+            <div id="cardTemp" class="card card-temp">
+                <div class="card-header">
+                    <i class="fas fa-thermometer-half"></i>
+                    <h3>Temperature</h3>
+                </div>
+                <div class="card-value">
+                    <span id="tempValue" class="value-number">--</span>
+                    <span class="value-unit">°C</span>
+                </div>
+                <div class="bar-container">
+                    <div class="bar-grid-lines">
+                        <div class="grid-line"></div>
+                        <div class="grid-line"></div>
+                        <div class="grid-line"></div>
+                        <div class="grid-line"></div>
+                        <div class="grid-line"></div>
+                    </div>
+                    <div id="tempBar" class="bar bar-temp"></div>
+                </div>
+                <div class="card-footer">
+                    <span><i class="fas fa-chart-line"></i> Trend: <span id="tempTrend">0.0°C</span></span>
+                </div>
+            </div>
+
+            <div id="cardHum" class="card card-hum">
+                <div class="card-header">
+                    <i class="fas fa-tint"></i>
+                    <h3>Humidity</h3>
+                </div>
+                <div class="card-value">
+                    <span id="humValue" class="value-number">--</span>
+                    <span class="value-unit">%</span>
+                </div>
+                <div class="bar-container">
+                    <div class="bar-grid-lines">
+                        <div class="grid-line"></div>
+                        <div class="grid-line"></div>
+                        <div class="grid-line"></div>
+                        <div class="grid-line"></div>
+                        <div class="grid-line"></div>
+                    </div>
+                    <div id="humBar" class="bar bar-hum"></div>
+                </div>
+                <div class="card-footer">
+                    <span><i class="fas fa-water"></i> Trend: <span id="humTrend">0%</span></span>
+                </div>
+            </div>
+
+            <div id="cardGas" class="card card-gas">
+                <div class="card-header">
+                    <i class="fas fa-industry"></i>
+                    <h3>Gas</h3>
+                </div>
+                <div class="card-value">
+                    <span id="gasValue" class="value-number">--</span>
+                    <span class="value-unit">ppm</span>
+                </div>
+                <div class="bar-container">
+                    <div class="bar-grid-lines">
+                        <div class="grid-line"></div>
+                        <div class="grid-line"></div>
+                        <div class="grid-line"></div>
+                        <div class="grid-line"></div>
+                        <div class="grid-line"></div>
+                    </div>
+                    <div id="gasBar" class="bar bar-gas"></div>
+                </div>
+                <div class="card-footer gas-footer">
+                    <span><i class="fas fa-exclamation-triangle"></i> Batas >800ppm</span>
+                    <span id="gasStatus">NORMAL</span>
+                </div>
+                <div id="gasWarningLight" class="warning-light"></div>
+            </div>
+        </div>
+
+        <!-- TIGA GRAFIK -->
+        <div class="charts-container">
+            <div class="chart-card">
+                <div class="chart-header temp-header">
+                    <div class="chart-icon-wrapper">
+                        <i class="fas fa-temperature-high chart-icon"></i>
+                        <div class="icon-particles">
+                            <span class="particle-dot"></span>
+                            <span class="particle-dot"></span>
+                            <span class="particle-dot"></span>
+                        </div>
+                    </div>
+                    <div class="chart-title-wrapper">
+                        <h3>Grafik Suhu</h3>
+                        <span class="chart-unit">°C</span>
+                    </div>
+                    <div class="chart-value-badge" id="tempChartValue">0°C</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="tempChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header hum-header">
+                    <div class="chart-icon-wrapper">
+                        <i class="fas fa-tint chart-icon"></i>
+                        <div class="icon-particles">
+                            <span class="particle-dot"></span>
+                            <span class="particle-dot"></span>
+                            <span class="particle-dot"></span>
+                        </div>
+                    </div>
+                    <div class="chart-title-wrapper">
+                        <h3>Grafik Kelembapan</h3>
+                        <span class="chart-unit">%</span>
+                    </div>
+                    <div class="chart-value-badge" id="humidityChartValue">0%</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="humChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-header gas-header">
+                    <div class="chart-icon-wrapper">
+                        <i class="fas fa-industry chart-icon"></i>
+                        <div class="icon-particles">
+                            <span class="particle-dot"></span>
+                            <span class="particle-dot"></span>
+                            <span class="particle-dot"></span>
+                        </div>
+                    </div>
+                    <div class="chart-title-wrapper">
+                        <h3>Grafik Gas</h3>
+                        <span class="chart-unit">ppm</span>
+                    </div>
+                    <div class="chart-value-badge" id="gasChartValue">0 ppm</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="gasChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log Activity -->
+        <div class="log-section">
+            <div class="log-header">
+                <h3><i class="fas fa-list-ul"></i> Log Aktivitas</h3>
+                <button class="clear-log-btn" id="clearLogBtn"><i class="fas fa-trash-alt"></i></button>
+            </div>
+            <div class="log-content" id="logContent">
+                <div class="log-item log-info">Menunggu koneksi MQTT...</div>
+            </div>
+        </div>
+
+        <div class="info-footer">
+            <i class="fas fa-chart-line"></i> 20 data terakhir | MQTT via EMQX Public Broker
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
